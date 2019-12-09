@@ -19,6 +19,7 @@ func EurekaInit(port string){
 	r.PUT("/eureka/apps/:serviceName/:instance", handler.InstancePut)
 	r.GET("/eureka/apps/delta", handler.Apps)
 	r.GET("/eureka/apps/", handler.Apps)
+	r.GET("/eureka/info", handler.Info)
 
 	log.Fatal(r.Run(":"+port))
 }

@@ -5,26 +5,39 @@ import (
 	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
+	"sync"
 )
 
+var appMapMutex = sync.Mutex{}
 var appMap = map[string]map[string]model.InstanceInfo{}
 
 func Instance(c *gin.Context) {
+
+	serviceName := c.Param("serviceName")
 	var json model.Instance
 	if err := c.ShouldBindJSON(&json); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	_, ok := appMap[c.Param("serviceName")]
+	_, ok := appMap[serviceName]
 	if !ok {
-		println("add ", c.Param("serviceName"))
+		println("add ", serviceName)
 		instanceMap := map[string]model.InstanceInfo{}
 		instanceMap[json.Instance.InstanceID] = json.Instance
+		appMapMutex.Lock()
 		appMap[c.Param("serviceName")] = instanceMap
+		appMapMutex.Unlock()
 	} else {
-		instanceMap := appMap[c.Param("serviceName")]
-		instanceMap[json.Instance.InstanceID] = json.Instance
+		instanceMap := appMap[serviceName]
+		_, instanceExists := instanceMap[json.Instance.InstanceID]
+		if !instanceExists {
+			appMapMutex.Lock()
+			instanceMap[json.Instance.InstanceID] = json.Instance
+			appMapMutex.Unlock()
+		}
 	}
 
 	c.Status(204)
@@ -43,8 +56,7 @@ func InstancePut(c *gin.Context) {
 	c.JSON(200, nil)
 }
 
-func Apps(c *gin.Context) {
-
+func getApps() model.Applications {
 	applications := make([]model.Application, 0, len(appMap))
 
 	for i, v := range appMap {
@@ -53,7 +65,6 @@ func Apps(c *gin.Context) {
 		var instanceInfos = make([]model.InstanceInfo, 0, len(v))
 		for _, v1 := range v {
 			instanceInfos = append(instanceInfos, v1)
-
 		}
 
 		application.Instances = instanceInfos
@@ -66,5 +77,26 @@ func Apps(c *gin.Context) {
 		AppsHashcode:  "UP_1_",
 		Applications:  applications,
 	}
+	return deltaInfo
+}
+func Apps(c *gin.Context) {
+
+	deltaInfo := getApps()
+
 	c.XML(200, deltaInfo)
+}
+
+func Info(c *gin.Context) {
+	m := gin.H{
+	}
+	deltaInfo := getApps()
+	for _, v := range deltaInfo.Applications {
+		instanceInfo := make([]string, 0, len(v.Instances))
+		for _, instance := range v.Instances {
+			instanceInfo = append(instanceInfo, instance.HostName+":"+strconv.Itoa(instance.Port.Port))
+		}
+		m[v.Name] = strings.Join(instanceInfo, ",")
+	}
+
+	c.JSON(200, m)
 }

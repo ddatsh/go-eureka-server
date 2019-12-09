@@ -2,17 +2,20 @@ package handler
 
 import (
 	"fmt"
+	"github.com/ddatsh/go-eureka-server/util"
 	"github.com/gin-gonic/gin"
+	"github.com/imdario/mergo"
 	"gopkg.in/yaml.v2"
-	"io"
 	"log"
 	"os"
+
 	"strings"
 )
 
 var PWD string
 
 func init() {
+
 	dir, err := os.Getwd()
 	if err != nil {
 		log.Fatal(err)
@@ -73,37 +76,6 @@ func GetConfig(c *gin.Context) {
 
 }
 
-func readYml(file string) map[string]interface{} {
-
-	var decoder *yaml.Decoder
-	var contentMap = map[string]interface{}{}
-
-	if _, err := os.Stat(file); !os.IsNotExist(err) {
-
-		f, err := os.Open(file)
-		if err != nil {
-			panic(err)
-		}
-		defer f.Close()
-		decoder = yaml.NewDecoder(f)
-
-		for {
-
-			var overrideMap map[string]interface{}
-
-			errorReading := decoder.Decode(&overrideMap)
-			if errorReading == io.EOF {
-				return contentMap
-			} else {
-				for k, v := range overrideMap {
-					contentMap[k] = v
-				}
-			}
-		}
-	}
-
-	return contentMap
-}
 func parse(filePath, app string) map[interface{}]interface{} {
 
 	app = app[0:strings.LastIndex(app, ".")]
@@ -112,24 +84,20 @@ func parse(filePath, app string) map[interface{}]interface{} {
 
 	dir := filePath + "/config/" + app
 	if _, err := os.Stat(dir); !os.IsNotExist(err) {
-		merge(contentMap, dir+"/application.yml")
-		merge(contentMap, dir+"/"+app+".yml")
+
+		mergo.Merge(&contentMap, util.ReadYml( dir+"/application.yml"),mergo.WithOverride)
+		mergo.Merge(&contentMap, util.ReadYml(dir+"/"+app+".yml"),mergo.WithOverride)
+
 	} else {
 		baseApp := app[0:strings.LastIndex(app, "-")]
 		dir = filePath + "/config/" + baseApp
-		merge(contentMap, dir+"/application.yml")
-		merge(contentMap, dir+"/"+baseApp+".yml")
-		merge(contentMap, dir+"/"+app+".yml")
+
+		mergo.Merge(&contentMap, util.ReadYml( dir+"/application.yml"),mergo.WithOverride)
+		mergo.Merge(&contentMap, util.ReadYml( dir+"/"+baseApp+".yml"),mergo.WithOverride)
+		mergo.Merge(&contentMap, util.ReadYml( dir+"/"+app+".yml"),mergo.WithOverride)
+
 	}
 
-	return contentMap
-}
-
-func merge(contentMap map[interface{}]interface{}, file string) map[interface{}]interface{} {
-	overrideMap := readYml(file)
-	for k, v := range overrideMap {
-		contentMap[k] = v
-	}
 	return contentMap
 }
 
