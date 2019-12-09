@@ -9,7 +9,6 @@ import (
 func ConfigServerInit(port string) {
 
 	r := gin.Default()
-	r.RedirectTrailingSlash = true
 
 	r.Any("", func(c *gin.Context) {
 		c.String(200, "config server running")
@@ -19,5 +18,4 @@ func ConfigServerInit(port string) {
 	r.GET("/:name/:env", handler.GetConfigWithEnv)
 
 	log.Fatal(r.Run(":" + port))
-	//log.Fatal(r.Run(":8887" ))
 }

@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"github.com/ddatsh/go-eureka-server/util"
 	"github.com/gin-gonic/gin"
 	"github.com/imdario/mergo"
@@ -41,7 +40,7 @@ func GetConfigWithEnv(c *gin.Context) {
 		"propertySources": []gin.H{
 			{
 				"name":   "classpath:/config/" + path + "-" + env + ".yml",
-				"source": convert(flatmap(contentMap))},
+				"source": util.ConvertMap(util.FlatMap(contentMap))},
 		},
 	})
 
@@ -69,7 +68,7 @@ func GetConfig(c *gin.Context) {
 		c.String(200, string(bs))
 	case "json":
 		contentMap = parse(PWD, path)
-		c.JSON(200, convert(contentMap))
+		c.JSON(200, util.ConvertMap(contentMap))
 	default:
 		c.Status(404)
 	}
@@ -99,55 +98,4 @@ func parse(filePath, app string) map[interface{}]interface{} {
 	}
 
 	return contentMap
-}
-
-func convert(i interface{}) interface{} {
-	switch x := i.(type) {
-	case map[interface{}]interface{}:
-		m2 := map[string]interface{}{}
-		for k, v := range x {
-			m2[k.(string)] = convert(v)
-		}
-		return m2
-	case map[interface{}]string:
-		m2 := map[string]interface{}{}
-		for k, v := range x {
-			m2[k.(string)] = convert(v)
-		}
-		return m2
-	case []interface{}:
-		for i, v := range x {
-			x[i] = convert(v)
-		}
-	}
-	return i
-}
-
-func flatmap(any map[interface{}]interface{}) map[interface{}]string {
-
-	flatmap := map[interface{}]string{}
-	for k, v := range any {
-		flatten(k.(string), v, flatmap)
-	}
-
-	return flatmap
-}
-
-func flatten(prefix string, value interface{}, flatmap map[interface{}]string) {
-	submap, ok := value.(map[interface{}]interface{})
-	if ok {
-		for k, v := range submap {
-			flatten(prefix+"."+k.(string), v, flatmap)
-		}
-		return
-	}
-	stringlist, ok := value.([]interface{})
-	if ok {
-		flatten(fmt.Sprintf("%s.size", prefix), len(stringlist), flatmap)
-		for i, v := range stringlist {
-			flatten(fmt.Sprintf("%s.%d", prefix, i), v, flatmap)
-		}
-		return
-	}
-	flatmap[prefix] = fmt.Sprintf("%v", value)
 }
