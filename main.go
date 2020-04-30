@@ -2,32 +2,32 @@ package main
 
 import (
 	"flag"
-	"github.com/gin-gonic/gin"
+	"github.com/ddatsh/go-eureka-server/route"
 )
 
 var EurekaEnabled = false
 var ConfigServerEnabled = false
-var EurekaPort = "8761"
+var EurekaPort = "8762"
 var ConfigServerPort = "8888"
 
 func main() {
 
 	flag.BoolVar(&EurekaEnabled, "eurekaEnabled", true, "enable eureka server")
-	flag.StringVar(&EurekaPort, "eurekaPort", "8761", "eureka port")
+	flag.StringVar(&EurekaPort, "eurekaPort", "8762", "eureka port")
 	flag.BoolVar(&ConfigServerEnabled, "configServer", true, "enable config server")
 	flag.StringVar(&ConfigServerPort, "configServerPort", "8888", "config server port")
 	flag.Parse()
 
-	gin.SetMode(gin.ReleaseMode)
+	//gin.SetMode(gin.ReleaseMode)
 
 	if EurekaEnabled {
 		go func() {
-			EurekaInit(EurekaPort)
+			route.EurekaInit(EurekaPort)
 		}()
 	}
 	if ConfigServerEnabled {
 		go func() {
-			ConfigServerInit(ConfigServerPort)
+			route.ConfigServerInit(ConfigServerPort)
 		}()
 	}
 
