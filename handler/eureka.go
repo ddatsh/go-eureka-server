@@ -1,10 +1,16 @@
 package handler
 
 import (
+	"fmt"
 	"github.com/ddatsh/go-eureka-server/model"
 	"github.com/gin-gonic/gin"
+	"html/template"
 	"log"
+	"net"
 	"net/http"
+	"net/http/httputil"
+	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -12,8 +18,72 @@ import (
 
 var appMapMutex = sync.Mutex{}
 var appMap = map[string]map[string]model.InstanceInfo{}
+var localIp string
+func  init()  {
+	localIp=resolveHostIp()
+}
+func resolveHostIp() string {
 
+	netInterfaceAddresses, err := net.InterfaceAddrs()
+
+	if err != nil { return "" }
+
+	for _, netInterfaceAddress := range netInterfaceAddresses {
+
+		networkIp, ok := netInterfaceAddress.(*net.IPNet)
+
+		if ok && !networkIp.IP.IsLoopback() && networkIp.IP.To4() != nil {
+
+			ip := networkIp.IP.String()
+
+			fmt.Println("Resolved Host IP: " + ip)
+
+			return ip
+		}
+	}
+	return ""
+}
+
+func checkError(err error) {
+	if err != nil {
+		fmt.Println("Fatal error ", err.Error())
+		os.Exit(1)
+	}
+}
+
+func PeerReplicationBatch(c *gin.Context) {
+
+	requestDump, err := httputil.DumpRequest(c.Request, true)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(string(requestDump))
+}
+
+func Index(c *gin.Context) {
+	println(resolveHostIp())
+	m := gin.H{
+		"instanceInfo": gin.H{"ipAddr": localIp,
+			"status": "UP"},
+		"generalInfo": gin.H{"total-avail-memory": "10MB",
+			"environment":   "dev",
+			"num-of-cpus":   runtime.NumCPU(),
+			"server-uptime": "1 min"},
+		"apps": appMap,
+	}
+
+	t, err := template.ParseFiles("tmpl.html")
+	checkError(err)
+
+	err = t.Execute(c.Writer, m)
+	checkError(err)
+}
 func Instance(c *gin.Context) {
+	requestDump, err := httputil.DumpRequest(c.Request, true)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(string(requestDump))
 
 	serviceName := c.Param("serviceName")
 	var json model.Instance
@@ -57,6 +127,7 @@ func InstancePut(c *gin.Context) {
 }
 
 func getApps() model.Applications {
+
 	applications := make([]model.Application, 0, len(appMap))
 
 	for i, v := range appMap {

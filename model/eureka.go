@@ -2,8 +2,37 @@ package model
 
 import "encoding/xml"
 
+// StringMap is a map[string]string.
+type StringMap map[string]string
+
+// StringMap marshals into XML.
+func (s StringMap) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+
+	tokens := []xml.Token{start}
+
+	for key, value := range s {
+		t := xml.StartElement{Name: xml.Name{"", key}}
+		tokens = append(tokens, t, xml.CharData(value), xml.EndElement{t.Name})
+	}
+
+	tokens = append(tokens, xml.EndElement{start.Name})
+
+	for _, t := range tokens {
+		err := e.EncodeToken(t)
+		if err != nil {
+			return err
+		}
+	}
+
+	// flush to ensure tokens are written
+	return e.Flush()
+}
+
 type MetaData struct {
-	Map   map[string]string
+	//Map   map[string]string
+	//Map   StringMap
+	XMLName xml.Name
+	Value   string `xml:",chardata"`
 	Class string
 }
 
@@ -42,7 +71,8 @@ type InstanceInfo struct {
 	SecurePort                    Port           `xml:"securePort,omitempty" json:"securePort,omitempty"`
 	DataCenterInfo                DataCenterInfo `xml:"dataCenterInfo" json:"dataCenterInfo"`
 	LeaseInfo                     LeaseInfo      `xml:"leaseInfo,omitempty" json:"leaseInfo,omitempty"`
-	//Metadata                      MetaData       `xml:"metadata,omitempty" json:"metadata,omitempty"`
+	//Metadata                      *MetaData       `xml:"metadata,omitempty" json:"metadata,omitempty"`
+	Metadata                      StringMap       `xml:"metadata,omitempty" json:"metadata,omitempty"`
 	IsCoordinatingDiscoveryServer string            `xml:"isCoordinatingDiscoveryServer,omitempty" json:"isCoordinatingDiscoveryServer,omitempty"`
 	LastUpdatedTimestamp          string             `xml:"lastUpdatedTimestamp,omitempty" json:"lastUpdatedTimestamp,omitempty"`
 	LastDirtyTimestamp            string             `xml:"lastDirtyTimestamp,omitempty" json:"lastDirtyTimestamp,omitempty"`

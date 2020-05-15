@@ -7,8 +7,8 @@ import (
 
 var EurekaEnabled = false
 var ConfigServerEnabled = false
-var EurekaPort = "8762"
-var ConfigServerPort = "8888"
+var EurekaPort string
+var ConfigServerPort string
 
 func main() {
 

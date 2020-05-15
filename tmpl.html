@@ -27,12 +27,8 @@
             </div>
             <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
                 <ul class="nav navbar-nav navbar-right">
-                    <li>
-                        <a href="/">Home</a>
-                    </li>
-                    <li>
-                        <a href="/lastn">Last 1000 since startup</a>
-                    </li>
+                    <li><a href="/">Home</a></li>
+                    <li><a href="/lastn">Last 1000 since startup</a></li>
                 </ul>
             </div>
         </div>
@@ -40,50 +36,79 @@
 
 
 <div class="container-fluid xd-container">
-    <#include "navbar.ftl">
+
+    <h1>System Status</h1>
+    <div class="row">
+        <div class="col-md-6">
+            <table id='instances' class="table table-condensed table-striped table-hover">
+            <tr>
+                <td>Environment</td>
+                <td>${environment!}</td>
+            </tr>
+            <tr>
+                <td>Data center</td>
+                <td>${datacenter!}</td>
+            </tr>
+            </table>
+        </div>
+        <div class="col-md-6">
+            <table id='instances' class="table table-condensed table-striped table-hover">
+                <tr>
+                    <td>Current time</td>
+                    <td>${currentTime}</td>
+                </tr>
+                <tr>
+                    <td>Uptime</td>
+                    <td>${upTime}</td>
+                </tr>
+                <tr>
+                    <td>Lease expiration enabled</td>
+                    <td>${registry.leaseExpirationEnabled?c}</td>
+                </tr>
+                <tr>
+                    <td>Renews threshold</td>
+                    <td>${registry.numOfRenewsPerMinThreshold}</td>
+                </tr>
+                <tr>
+                    <td>Renews (last min)</td>
+                    <td>${registry.numOfRenewsInLastMin}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
     <h1>Instances currently registered with Eureka</h1>
     <table id='instances' class="table table-striped table-hover">
         <thead>
         <tr><th>Application</th><th>AMIs</th><th>Availability Zones</th><th>Status</th></tr>
         </thead>
         <tbody>
-        <#if apps?has_content>
-            <#list apps as app>
-            <tr>
-                <td><b>${app.name}</b></td>
-                <td>
-                    <#list app.amiCounts as amiCount>
-                    <b>${amiCount.key}</b> (${amiCount.value})<#if amiCount_has_next>,</#if>
-            </#list>
-               </td>
-        <td>
-            <#list app.zoneCounts as zoneCount>
-            <b>${zoneCount.key}</b> (${zoneCount.value})<#if zoneCount_has_next>,</#if>
-        </#list>
-        </td>
-        <td>
-            <#list app.instanceInfos as instanceInfo>
-            <#if instanceInfo.isNotUp>
-            <font color=red size=+1><b>
-                </#if>
-                <b>${instanceInfo.status}</b> (${instanceInfo.instances?size}) -
-                <#if instanceInfo.isNotUp>
-                </b></font>
-        </#if>
-        <#list instanceInfo.instances as instance>
-        <#if instance.isHref>
-        <a href="${instance.url}" target="_blank">${instance.id}</a>
-        <#else>
-        ${instance.id}
-    </#if><#if instance_has_next>,</#if>
-</#list>
-</#list>
+
+        {{$appsLen:= len .apps}}
+
+        {{if eq $appsLen 0}}
+            <tr><td colspan="4">No instances available</td></tr>
+        {{else}}
+            {{range $i, $v := .apps}}
+                <tr>
+                    <td> <b>{{$i}} </b></td>
+                    <td>
+                        <b>n/a</b>({{len $v | print}})
+                    </td>
+                    <td>
+                        ({{len $v | print}})
+                    </td>
+                    <td>
+                        <b>UP</b>({{len $v | print}}) -
+                        {{range $i, $v1 := $v}}
+                            <a href="{{$v1.StatusPageUrl}}" target="_blank">{{$i}}</a>
+                        {{end}}
+                    </td>
+                </tr>
+            {{end}}
+        {{end}}
 </td>
 </tr>
-</#list>
-<#else>
-<tr><td colspan="4">No instances available</td></tr>
-</#if>
 
 </tbody>
 </table>
