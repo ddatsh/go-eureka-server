@@ -2,8 +2,6 @@ package handler
 
 import (
 	"fmt"
-	"github.com/ddatsh/go-eureka-server/model"
-	"github.com/gin-gonic/gin"
 	"html/template"
 	"log"
 	"net"
@@ -14,30 +12,41 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
+
+	"github.com/ddatsh/go-eureka-server/model"
+	"github.com/dustin/go-humanize"
+	"github.com/gin-gonic/gin"
+	"github.com/hako/durafmt"
+	"github.com/paulbellamy/ratecounter"
+	"github.com/shirou/gopsutil/mem"
 )
 
-var appMapMutex = sync.Mutex{}
-var appMap = map[string]map[string]model.InstanceInfo{}
-var localIp string
-func  init()  {
-	localIp=resolveHostIp()
+var (
+	appMapMutex = sync.Mutex{}
+	appMap      = map[string]map[string]model.InstanceInfo{}
+	localIp     string
+	startTime   = time.Now()
+	environment = "test"
+	dateCenter  = "default"
+	renews      = ratecounter.NewRateCounter(60 * time.Second)
+)
+
+func init() {
+	localIp = resolveHostIp()
 }
 func resolveHostIp() string {
 
 	netInterfaceAddresses, err := net.InterfaceAddrs()
 
-	if err != nil { return "" }
+	if err != nil {
+		return ""
+	}
 
 	for _, netInterfaceAddress := range netInterfaceAddresses {
-
 		networkIp, ok := netInterfaceAddress.(*net.IPNet)
-
-		if ok && !networkIp.IP.IsLoopback() && networkIp.IP.To4() != nil {
-
+		if ok && !networkIp.IP.IsLoopback() && !networkIp.IP.IsLinkLocalUnicast() && networkIp.IP.To4() != nil {
 			ip := networkIp.IP.String()
-
-			fmt.Println("Resolved Host IP: " + ip)
-
 			return ip
 		}
 	}
@@ -61,14 +70,27 @@ func PeerReplicationBatch(c *gin.Context) {
 }
 
 func Index(c *gin.Context) {
-	println(resolveHostIp())
+	virtualMemoryStat, _ := mem.VirtualMemory()
+
+	var memStats runtime.MemStats
+	runtime.ReadMemStats(&memStats)
+
+	upTime := durafmt.Parse(time.Since(startTime)).LimitFirstN(2).String()
 	m := gin.H{
-		"instanceInfo": gin.H{"ipAddr": localIp,
+		"renews":      renews.Rate(),
+		"dataCenter":  dateCenter,
+		"environment": environment,
+		"currentTime": time.Now(),
+		"upTime":      upTime,
+		"instanceInfo": gin.H{
+			"ipAddr": localIp,
 			"status": "UP"},
-		"generalInfo": gin.H{"total-avail-memory": "10MB",
-			"environment":   "dev",
-			"num-of-cpus":   runtime.NumCPU(),
-			"server-uptime": "1 min"},
+		"generalInfo": gin.H{
+			"current-memory-usage": humanize.IBytes(memStats.HeapInuse),
+			"environment":          environment,
+			"num-of-cpus":          runtime.NumCPU(),
+			"total-avail-memory":   humanize.IBytes(virtualMemoryStat.Total),
+			"server-uptime":        durafmt.Parse(time.Since(startTime)).LimitFirstN(2)},
 		"apps": appMap,
 	}
 
@@ -158,8 +180,7 @@ func Apps(c *gin.Context) {
 }
 
 func Info(c *gin.Context) {
-	m := gin.H{
-	}
+	m := gin.H{}
 	deltaInfo := getApps()
 	for _, v := range deltaInfo.Applications {
 		instanceInfo := make([]string, 0, len(v.Instances))

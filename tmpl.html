@@ -43,11 +43,11 @@
             <table id='instances' class="table table-condensed table-striped table-hover">
             <tr>
                 <td>Environment</td>
-                <td>${environment!}</td>
+                <td>{{.environment}}</td>
             </tr>
             <tr>
                 <td>Data center</td>
-                <td>${datacenter!}</td>
+                <td>{{.dataCenter}}</td>
             </tr>
             </table>
         </div>
@@ -55,11 +55,11 @@
             <table id='instances' class="table table-condensed table-striped table-hover">
                 <tr>
                     <td>Current time</td>
-                    <td>${currentTime}</td>
+                    <td>{{.currentTime}}/td>
                 </tr>
                 <tr>
                     <td>Uptime</td>
-                    <td>${upTime}</td>
+                    <td>{{.upTime}}</td>
                 </tr>
                 <tr>
                     <td>Lease expiration enabled</td>
